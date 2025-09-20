@@ -39,7 +39,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        // API o‘rniga mock data
+    
         setStats({
           todayAppointments: 5,
           newPatients: 12,
