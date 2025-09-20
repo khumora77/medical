@@ -16,6 +16,9 @@ import {
   PersonAdd as PersonAddIcon,
   EventAvailable as EventAvailableIcon,
 } from "@mui/icons-material";
+import StatsDashboard from "../components/dashboard/dashboard";
+import VisitorInsightsDashboard from "../components/dashboard/chart";
+
 
 interface Appointment {
   id: number;
@@ -138,6 +141,8 @@ const Dashboard: React.FC = () => {
           </Paper>
         </Grid>
       </Grid>
+      <StatsDashboard/>
+      <VisitorInsightsDashboard/>
     </Box>
   );
 };
