@@ -1,8 +1,11 @@
-import React from 'react'
+import PatientForm from "../patient/patientForm"
+
 
 const Patients = () => {
   return (
-    <div>Patients</div>
+    <div>
+      <PatientForm/>
+    </div>
   )
 }
 

@@ -5,10 +5,10 @@ const AdminProfile: React.FC = () => {
   const [adminData, setAdminData] = useState(() => {
     const savedData = localStorage.getItem('adminProfileData');
     return savedData ? JSON.parse(savedData) : {
-      name: 'Sarah Johnson',
-      email: 'sarah.johnson@example.com',
-      role: 'Senior Administrator',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=4&w=256&h=256&q=60',
+      name: 'Admin',
+      email: 'admin@gmail',
+      role: 'Administrator',
+      avatar: "../../assets/image.png",
       joinDate: 'January 2022',
       lastLogin: '2 hours ago',
       department: 'IT Management',
@@ -147,7 +147,7 @@ const AdminProfile: React.FC = () => {
   const AvatarEditModal = () => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl p-6 w-full max-w-md">
-        <h3 className="text-xl font-semibold mb-4">Profil rasmini o'zgartirish</h3>
+        <h3 className="text-xl font-semibold mb-4">Edit</h3>
         
         <div className="flex flex-col space-y-4">
           {/* Fayl yuklash */}
@@ -193,7 +193,7 @@ const AdminProfile: React.FC = () => {
                   onClick={stopCamera}
                   className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex-1"
                 >
-                  Bekor qilish
+                  Cancel 
                 </button>
               </div>
             </div>
@@ -205,7 +205,7 @@ const AdminProfile: React.FC = () => {
             onClick={() => setIsAvatarEditing(false)}
             className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
           >
-            Bekor qilish
+           Cancel
           </button>
         </div>
       </div>
