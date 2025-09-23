@@ -69,3 +69,26 @@ export interface PatientsResponse {
   pages: number;
   data: Patient[];
 }
+export interface Appointment {
+  id: string;
+  patientName: string;
+  doctorId: string;
+  date: string;
+  time: string;
+  status: 'scheduled' | 'completed' | 'cancelled';
+  reason: string;
+}
+
+export interface Doctor {
+  id: string;
+  name: string;
+  specialization: string;
+  email: string;
+}
+
+export interface AppointmentFormData {
+  patientName: string;
+  date: string;
+  time: string;
+  reason: string;
+}
