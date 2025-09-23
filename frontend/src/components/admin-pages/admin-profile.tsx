@@ -1,479 +1,571 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from "react";
+import {
+  Box,
+  Paper,
+  TextField,
+  Button,
+  Typography,
+  Alert,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Grid,
+  IconButton,
+  Chip,
+  Avatar,
+  Snackbar,
+} from "@mui/material";
+import {
+  Edit as EditIcon,
+  CameraAlt as CameraIcon,
+  Save as SaveIcon,
+  Cancel as CancelIcon,
+  Person as PersonIcon,
+} from "@mui/icons-material";
+import { useAdminStore } from "../../store/adminStore";
 
 const AdminProfile: React.FC = () => {
-  // State for admin data - localStorage dan o'qish
-  const [adminData, setAdminData] = useState(() => {
-    const savedData = localStorage.getItem('adminProfileData');
-    return savedData ? JSON.parse(savedData) : {
-      name: 'Admin',
-      email: 'admin@gmail',
-      role: 'Administrator',
-      avatar: "../../assets/image.png",
-      joinDate: 'January 2022',
-      lastLogin: '2 hours ago',
-      department: 'IT Management',
-      location: 'San Francisco, CA',
-      phone: '+1 (555) 123-4567'
-    };
+  const { 
+    profile, 
+    stats, 
+    isLoading, 
+    error, 
+    fetchProfile, 
+    updateProfile, 
+    updateAvatar,
+    fetchStats,
+    clearError 
+  } = useAdminStore();
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [isAvatarEditing, setIsAvatarEditing] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  
+  const [editData, setEditData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
   });
 
-  // State for stats
-  const [stats] = useState([
-    { label: 'Total Users', value: '2,458' },
-    { label: 'Active Sessions', value: '378' },
-    { label: 'Tasks Completed', value: '1,245' },
-    { label: 'Storage Used', value: '4.7GB' }
-  ]);
-
-  // State for edit mode
-  const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState({ ...adminData });
-
-  // State for avatar editing
-  const [isAvatarEditing, setIsAvatarEditing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
-  // Ma'lumotlarni localStorage ga saqlash
+  // Component mount bo'lganda ma'lumotlarni yuklash
   useEffect(() => {
-    localStorage.setItem('adminProfileData', JSON.stringify(adminData));
-  }, [adminData]);
+    fetchProfile();
+    fetchStats();
+  }, [fetchProfile, fetchStats]);
 
-  // Handle input changes
+  // Profile ma'lumotlarini editData ga set qilish
+  useEffect(() => {
+    if (profile) {
+      setEditData({
+        firstName: profile.firstName || "",
+        lastName: profile.lastName || "",
+        email: profile.email || "",
+        phone: profile.phone || "",
+      });
+    }
+  }, [profile]);
+
+  const showSnackbar = (message: string) => {
+    setSnackbarMessage(message);
+    setSnackbarOpen(true);
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setEditData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Save changes
-  const handleSave = () => {
-    setAdminData(editData);
-    setIsEditing(false);
-    // localStorage ga avtomatik saqlanadi useEffect orqali
-  };
-
-  // Cancel editing
-  const handleCancel = () => {
-    setEditData(adminData);
-    setIsEditing(false);
-  };
-
-  // Fayl yuklash funksiyasi
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Fayl hajmini tekshirish (5MB dan oshmasligi kerak)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Fayl hajmi 5MB dan oshmasligi kerak!');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          const newAvatar = e.target.result as string;
-          const updatedData = {...adminData, avatar: newAvatar};
-          setAdminData(updatedData);
-          setEditData(updatedData);
-          setIsAvatarEditing(false);
-          
-          // localStorage ga yangi avatar ni saqlash
-          localStorage.setItem('adminProfileData', JSON.stringify(updatedData));
-        }
-      };
-      reader.readAsDataURL(file);
+  const handleSave = async () => {
+    try {
+      await updateProfile(editData);
+      setIsEditing(false);
+      showSnackbar("Profil muvaffaqiyatli yangilandi!");
+    } catch (error) {
+      console.error('Profilni yangilashda xatolik:', error);
     }
   };
 
-  // Kamerani ishga tushirish
+  const handleCancel = () => {
+    if (profile) {
+      setEditData({
+        firstName: profile.firstName || "",
+        lastName: profile.lastName || "",
+        email: profile.email || "",
+        phone: profile.phone || "",
+      });
+    }
+    setIsEditing(false);
+    clearError();
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showSnackbar("Fayl hajmi 5MB dan oshmasligi kerak!");
+      return;
+    }
+
+    try {
+      await updateAvatar(file);
+      setIsAvatarEditing(false);
+      showSnackbar("Profil rasmi muvaffaqiyatli yangilandi!");
+    } catch (error) {
+      console.error('Avatar yangilashda xatolik:', error);
+    }
+  };
+
   const startCamera = async () => {
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: 640, height: 480 } 
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 480 },
       });
+      
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        setStream(mediaStream);
+        streamRef.current = mediaStream;
         setIsCameraActive(true);
       }
     } catch (error) {
-      console.error('Kamerani ochishda xatolik:', error);
-      alert('Kameraga kirish imkoni yo‘q. Iltimos, ruxsatnomalarni tekshiring.');
+      console.error("Kamerani ochishda xatolik:", error);
+      showSnackbar("Kameraga kirish imkoni yo'q. Iltimos, ruxsatnomalarni tekshiring.");
     }
   };
 
-  // Kamerani yopish
   const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
       setIsCameraActive(false);
     }
   };
 
-  // Rasmni kameradan olish
-  const captureFromCamera = () => {
+  const captureFromCamera = async () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
-      const context = canvas.getContext('2d');
-      
+      const context = canvas.getContext("2d");
+
       if (!context) return;
-      
-      // Canvas o'lchamlarini video o'lchamlariga moslashtirish
+
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      
-      // Videodan rasmni canvasga chizish
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      // Canvasdagi rasmni ma'lumot URI sifatida olish
-      const imageDataURL = canvas.toDataURL('image/png');
-      const updatedData = {...adminData, avatar: imageDataURL};
-      setAdminData(updatedData);
-      setEditData(updatedData);
-      stopCamera();
-      setIsAvatarEditing(false);
-      
-      // localStorage ga yangi avatar ni saqlash
-      localStorage.setItem('adminProfileData', JSON.stringify(updatedData));
+
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          const file = new File([blob], "camera-capture.png", { type: "image/png" });
+          try {
+            await updateAvatar(file);
+            stopCamera();
+            setIsAvatarEditing(false);
+            showSnackbar("Profil rasmi kameradan muvaffaqiyatli olingan!");
+          } catch (error) {
+            console.error('Avatar yangilashda xatolik:', error);
+          }
+        }
+      }, "image/png");
     }
   };
 
-  // Avatar tahrirlash modali
+  // Avatar Edit Modal komponenti
   const AvatarEditModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md">
-        <h3 className="text-xl font-semibold mb-4">Edit</h3>
-        
-        <div className="flex flex-col space-y-4">
-          {/* Fayl yuklash */}
-          <button
+    <Dialog 
+      open={isAvatarEditing} 
+      onClose={() => {
+        setIsAvatarEditing(false);
+        stopCamera();
+      }}
+      maxWidth="sm"
+      fullWidth
+    >
+      <DialogTitle>Profil rasmini yangilash</DialogTitle>
+      <DialogContent>
+        <Box display="flex" flexDirection="column" gap={2} py={2}>
+          <Button
+            variant="outlined"
             onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            startIcon={<PersonIcon />}
+            disabled={isLoading}
           >
             Kompyuterdan rasm tanlash
-          </button>
-          
+          </Button>
+
           <input
             type="file"
             ref={fileInputRef}
             onChange={handleFileUpload}
             accept="image/*"
-            className="hidden"
+            style={{ display: 'none' }}
           />
-          
-          {/* Kameradan rasm olish */}
+
           {!isCameraActive ? (
-            <button
+            <Button
+              variant="outlined"
               onClick={startCamera}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              startIcon={<CameraIcon />}
+              disabled={isLoading}
             >
               Kameradan rasm olish
-            </button>
+            </Button>
           ) : (
-            <div className="space-y-2">
-              <video 
-                ref={videoRef} 
-                autoPlay 
-                playsInline 
-                className="w-full h-48 bg-gray-200 rounded-lg object-cover"
+            <Box>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                style={{
+                  width: '100%',
+                  height: '240px',
+                  backgroundColor: '#f5f5f5',
+                  borderRadius: '8px',
+                  objectFit: 'cover'
+                }}
               />
-              <div className="flex space-x-2">
-                <button
+              <Box display="flex" gap={1} mt={1}>
+                <Button
+                  variant="contained"
                   onClick={captureFromCamera}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex-1"
+                  fullWidth
+                  disabled={isLoading}
                 >
-                  Rasmni olish
-                </button>
-                <button
+                  {isLoading ? <CircularProgress size={20} /> : 'Rasmni olish'}
+                </Button>
+                <Button
+                  variant="outlined"
                   onClick={stopCamera}
-                  className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex-1"
+                  fullWidth
                 >
-                  Cancel 
-                </button>
-              </div>
-            </div>
+                  Bekor qilish
+                </Button>
+              </Box>
+            </Box>
           )}
-          
-          <canvas ref={canvasRef} className="hidden" />
-          
-          <button
-            onClick={() => setIsAvatarEditing(false)}
-            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-          >
-           Cancel
-          </button>
-        </div>
-      </div>
-    </div>
+
+          <canvas ref={canvasRef} style={{ display: 'none' }} />
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button 
+          onClick={() => {
+            setIsAvatarEditing(false);
+            stopCamera();
+          }}
+          disabled={isLoading}
+        >
+          Yopish
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 
+  if (isLoading && !profile) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <Box p={3}>
+        <Alert severity="error">
+          Profil ma'lumotlari topilmadi. Iltimos, qaytadan urinib ko'ring.
+        </Alert>
+        <Button 
+          variant="contained" 
+          onClick={fetchProfile}
+          sx={{ mt: 2 }}
+        >
+          Qayta Yuklash
+        </Button>
+      </Box>
+    );
+  }
+
+  const displayName = profile.firstName && profile.lastName 
+    ? `${profile.firstName} ${profile.lastName}`
+    : profile.email;
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Admin Profile</h1>
-          <p className="text-gray-600">Manage your account settings and preferences</p>
-        </header>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Profile Card */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <div className="flex flex-col items-center">
-                <div className="relative">
-                  <img
-                    src={adminData.avatar}
-                    alt="Profile"
-                    className="w-32 h-32 rounded-full object-cover border-4 border-blue-100"
-                  />
-                  <button
-                    onClick={() => setIsAvatarEditing(true)}
-                    className="absolute bottom-2 right-2 bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition-colors"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                    </svg>
-                  </button>
-                </div>
-                <h2 className="mt-4 text-xl font-semibold text-gray-800">{adminData.name}</h2>
-                <p className="text-blue-600 font-medium">{adminData.role}</p>
-                <p className="text-gray-500 text-sm mt-2">Joined {adminData.joinDate}</p>
-                
-                <div className="w-full mt-6 space-y-4">
-                  <button 
-                    onClick={() => setIsEditing(true)}
-                    className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors duration-300"
-                  >
-                    Edit Profile
-                  </button>
-                  <button className="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 py-2 px-4 rounded-lg transition-colors duration-300">
-                    Change Password
-                  </button>
-                </div>
-              </div>
-              
-              <div className="mt-6 pt-6 border-t border-gray-100">
-                <h3 className="text-lg font-medium text-gray-800 mb-4">Quick Stats</h3>
-                <div className="space-y-3">
-                  {stats.map((stat, index) => (
-                    <div key={index} className="flex justify-between items-center">
-                      <span className="text-gray-600">{stat.label}</span>
-                      <span className="font-semibold text-gray-800">{stat.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Right Column - Details and Forms */}
-          <div className="lg:col-span-2">
-            {/* Personal Information Card */}
-            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold text-gray-800">Personal Information</h2>
-                {isEditing && (
-                  <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                    Editing
-                  </span>
-                )}
-              </div>
-              
-              {isEditing ? (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={editData.name}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={editData.email}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={editData.phone}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                    <input
-                      type="text"
-                      name="department"
-                      value={editData.department}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                    <input
-                      type="text"
-                      name="location"
-                      value={editData.location}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  
-                  <div className="flex space-x-3 pt-4">
-                    <button
-                      onClick={handleSave}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-300"
-                    >
-                      Save Changes
-                    </button>
-                    <button
-                      onClick={handleCancel}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Full Name</h3>
-                    <p className="mt-1 text-gray-800">{adminData.name}</p>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Email Address</h3>
-                    <p className="mt-1 text-gray-800">{adminData.email}</p>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Phone Number</h3>
-                    <p className="mt-1 text-gray-800">{adminData.phone}</p>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Department</h3>
-                    <p className="mt-1 text-gray-800">{adminData.department}</p>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Location</h3>
-                    <p className="mt-1 text-gray-800">{adminData.location}</p>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500">Last Login</h3>
-                    <p className="mt-1 text-gray-800">{adminData.lastLogin}</p>
-                  </div>
-                </div>
+    <Box p={3}>
+      {/* Xatolik ko'rsatish */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={clearError}>
+          {error}
+        </Alert>
+      )}
+
+      <Typography variant="h4" gutterBottom fontWeight="bold">
+        Profil Boshqaruvi
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+        Shaxsiy ma'lumotlaringizni boshqaring va yangilang
+      </Typography>
+
+      <Grid container spacing={3}>
+        {/* Chap ustun - Profil kartasi */}
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 3, textAlign: 'center' }}>
+            <Box position="relative" display="inline-block">
+              <Avatar
+                src={profile.avatar || undefined}
+                sx={{ 
+                  width: 120, 
+                  height: 120, 
+                  mx: 'auto',
+                  fontSize: '3rem',
+                  bgcolor: 'primary.main'
+                }}
+              >
+                {profile.firstName?.[0]}{profile.lastName?.[0] || profile.email?.[0]}
+              </Avatar>
+              <IconButton
+                onClick={() => setIsAvatarEditing(true)}
+                sx={{
+                  position: 'absolute',
+                  bottom: 0,
+                  right: 0,
+                  backgroundColor: 'primary.main',
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: 'primary.dark',
+                  },
+                }}
+                size="small"
+                disabled={isLoading}
+              >
+                <EditIcon />
+              </IconButton>
+            </Box>
+
+            <Typography variant="h6" sx={{ mt: 2 }} noWrap>
+              {displayName}
+            </Typography>
+            <Chip 
+              label={profile.role} 
+              color="primary" 
+              size="small" 
+              sx={{ mt: 1 }}
+            />
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              {profile.email}
+            </Typography>
+
+            <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Button
+                variant={isEditing ? "outlined" : "contained"}
+                onClick={() => setIsEditing(!isEditing)}
+                startIcon={isEditing ? <CancelIcon /> : <EditIcon />}
+                fullWidth
+                disabled={isLoading}
+              >
+                {isEditing ? 'Bekor qilish' : 'Profilni tahrirlash'}
+              </Button>
+            </Box>
+          </Paper>
+
+          {/* Statistika kartalari */}
+          {stats && (
+            <Paper sx={{ p: 3, mt: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Statistika
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <Typography variant="h4" color="primary" textAlign="center">
+                    {stats.totalUsers}
+                  </Typography>
+                  <Typography variant="body2" textAlign="center">
+                    Foydalanuvchilar
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="h4" color="secondary" textAlign="center">
+                    {stats.activeSessions}
+                  </Typography>
+                  <Typography variant="body2" textAlign="center">
+                    Faol Sessiyalar
+                  </Typography>
+                </Grid>
+              </Grid>
+            </Paper>
+          )}
+        </Grid>
+
+        {/* O'ng ustun - Profil ma'lumotlari */}
+        <Grid item xs={12} md={8}>
+          <Paper sx={{ p: 3 }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+              <Typography variant="h6">
+                Shaxsiy Ma'lumotlar
+              </Typography>
+              {isEditing && (
+                <Chip 
+                  label="Tahrirlanmoqda" 
+                  color="primary" 
+                  size="small" 
+                  icon={isLoading ? <CircularProgress size={16} /> : undefined}
+                />
               )}
-            </div>
-            
-            {/* Security Settings Card */}
-            <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-6">Security Settings</h2>
-              
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg">
-                  <div>
-                    <h3 className="font-medium text-gray-800">Two-Factor Authentication</h3>
-                    <p className="text-sm text-gray-600">Add an extra layer of security to your account</p>
-                  </div>
-                  <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300">
-                    Enable
-                  </button>
-                </div>
-                
-                <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <h3 className="font-medium text-gray-800">Login Activity</h3>
-                    <p className="text-sm text-gray-600">Review your account's login history</p>
-                  </div>
-                  <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300">
-                    View Logs
-                  </button>
-                </div>
-                
-                <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <h3 className="font-medium text-gray-800">Active Sessions</h3>
-                    <p className="text-sm text-gray-600">Manage your active login sessions</p>
-                  </div>
-                  <button className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300">
-                    Manage
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            {/* System Preferences Card */}
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-6">System Preferences</h2>
-              
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-medium text-gray-800">Email Notifications</h3>
-                    <p className="text-sm text-gray-600">Receive emails for important updates</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" defaultChecked />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                  </label>
-                </div>
-                
-                <div className="flex justify-between items-center pt-4">
-                  <div>
-                    <h3 className="font-medium text-gray-800">Dark Mode</h3>
-                    <p className="text-sm text-gray-600">Switch to dark theme</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                  </label>
-                </div>
-                
-                <div className="flex justify-between items-center pt-4">
-                  <div>
-                    <h3 className="font-medium text-gray-800">Auto Logout</h3>
-                    <p className="text-sm text-gray-600">Automatically logout after 30 minutes of inactivity</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" defaultChecked />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {isAvatarEditing && <AvatarEditModal />}
-    </div>
+            </Box>
+
+            {isEditing ? (
+              <Grid container spacing={3}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Ism"
+                    name="firstName"
+                    value={editData.firstName}
+                    onChange={handleInputChange}
+                    fullWidth
+                    disabled={isLoading}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Familiya"
+                    name="lastName"
+                    value={editData.lastName}
+                    onChange={handleInputChange}
+                    fullWidth
+                    disabled={isLoading}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Email"
+                    name="email"
+                    type="email"
+                    value={editData.email}
+                    onChange={handleInputChange}
+                    fullWidth
+                    disabled={isLoading}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Telefon"
+                    name="phone"
+                    value={editData.phone}
+                    onChange={handleInputChange}
+                    fullWidth
+                    disabled={isLoading}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Box display="flex" gap={2} mt={2}>
+                    <Button
+                      variant="contained"
+                      onClick={handleSave}
+                      startIcon={isLoading ? <CircularProgress size={20} /> : <SaveIcon />}
+                      disabled={isLoading}
+                    >
+                      Saqlash
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={handleCancel}
+                      disabled={isLoading}
+                    >
+                      Bekor qilish
+                    </Button>
+                  </Box>
+                </Grid>
+              </Grid>
+            ) : (
+              <Grid container spacing={3}>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Ism
+                  </Typography>
+                  <Typography variant="body1">
+                    {profile.firstName || 'Ko\'rsatilmagan'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Familiya
+                  </Typography>
+                  <Typography variant="body1">
+                    {profile.lastName || 'Ko\'rsatilmagan'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Email
+                  </Typography>
+                  <Typography variant="body1">
+                    {profile.email}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Telefon
+                  </Typography>
+                  <Typography variant="body1">
+                    {profile.phone || 'Ko\'rsatilmagan'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Ro'l
+                  </Typography>
+                  <Typography variant="body1">
+                    {profile.role}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Hisob Holati
+                  </Typography>
+                  <Typography variant="body1">
+                    {profile.isActive ? 'Faol' : 'Nofaol'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Hisob ochilgan sana
+                  </Typography>
+                  <Typography variant="body1">
+                    {new Date(profile.createdAt).toLocaleDateString()}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Oxirgi yangilangan
+                  </Typography>
+                  <Typography variant="body1">
+                    {new Date(profile.updatedAt).toLocaleDateString()}
+                  </Typography>
+                </Grid>
+              </Grid>
+            )}
+          </Paper>
+        </Grid>
+      </Grid>
+
+      <AvatarEditModal />
+
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={4000}
+        onClose={() => setSnackbarOpen(false)}
+        message={snackbarMessage}
+      />
+    </Box>
   );
 };
 

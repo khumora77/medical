@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Container,
   Paper,
@@ -10,43 +10,72 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { motion } from "framer-motion";
-import { useAuthState } from "../store/auth-store";
+
 import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "../store/auth-store";
 
 const Auth = () => {
-  const { setAuth } = useAuthState();
+  const { login, user, isAuthenticated, isLoading, error, clearError } = useAuthStore();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
+  const [localError, setLocalError] = useState("");
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
+
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      redirectBasedOnRole(user.role);
+    }
+  }, [isAuthenticated, user, navigate]);
+
+  const redirectBasedOnRole = (role: string) => {
+    switch (role) {
+      case 'admin':
+        navigate('/dashboard');
+        break;
+      case 'doctor':
+        navigate('/doctor');
+        break;
+      case 'reception':
+        navigate('/reception');
+        break;
+      default:
+        navigate('/');
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLoading(true);
-    setErrorMsg("");
+    setLocalError("");
+    clearError();
+
     const em = email.trim();
     const pw = password.trim();
 
+  
+    if (!em || !pw) {
+      setLocalError("Email va parolni kiriting.");
+      return;
+    }
+
+    if (!em.includes('@')) {
+      setLocalError("To'g'ri email manzilini kiriting.");
+      return;
+    }
+
     try {
-      if (em === "admin@gmail.com" && pw === "admin1234") {
-        setAuth({ email: em, role: "admin" });
-        navigate("/dashboard");
-      } else if (em === "doctor@gmail.com" && pw === "doctor1234") {
-        setAuth({ email: em, role: "doctor" });
-        navigate("/doctor");
-      } else if (em === "reception@gmail.com" && pw === "reception1234") {
-        setAuth({ email: em, role: "reception" });
-        navigate("/reception");
-      } else {
-        setErrorMsg("Email yoki parol noto‘g‘ri.");
-      }
+      const userData = await login({ email: em, password: pw });
+      
+      console.log('Login successful:', userData);
+      
     } catch (error: any) {
-      setErrorMsg("Xatolik yuz berdi: " + (error.message || error));
-    } finally {
-      setLoading(false);
+      
+      console.error('Login error:', error);
     }
   };
+
+ 
+  const showDemoCredentials = process.env.NODE_ENV === 'development';
 
   return (
     <Container component="main" maxWidth="xs">
@@ -73,6 +102,7 @@ const Auth = () => {
               borderRadius: 3,
               textAlign: "center",
               background: "white",
+              position: "relative",
             }}
           >
             <motion.div
@@ -80,22 +110,27 @@ const Auth = () => {
               animate={{ scale: 1 }}
               transition={{ duration: 0.5 }}
             >
-              <Typography variant="h4" sx={{ fontWeight: "bold", color: "#1976d2" }}>
+              <Typography variant="h4" sx={{ fontWeight: "bold", color: "#1976d2", mb: 1 }}>
                 MedTech
               </Typography>
-              <Typography variant="h6" sx={{ mb: 2, color: "text.secondary" }}>
-                Sign In
+              <Typography variant="h6" sx={{ mb: 3, color: "text.secondary" }}>
+                SignIn
               </Typography>
             </motion.div>
 
-            {errorMsg && (
+
+            {(error || localError) && (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
               >
-                <Alert severity="error" sx={{ mb: 2 }}>
-                  {errorMsg}
+                <Alert 
+                  severity="error" 
+                  sx={{ mb: 2 }}
+                  onClose={clearError}
+                >
+                  {error || localError}
                 </Alert>
               </motion.div>
             )}
@@ -104,7 +139,7 @@ const Auth = () => {
               component="form"
               onSubmit={handleLogin}
               sx={{ mt: 1 }}
-              autoComplete="off"
+              autoComplete="on"
             >
               <motion.div
                 initial={{ x: -50, opacity: 0 }}
@@ -115,12 +150,18 @@ const Auth = () => {
                   margin="normal"
                   required
                   fullWidth
-                  label="Email Address"
+                  id="email"
+                  label="Email"
+                  name="email"
+                  autoComplete="email"
+                  autoFocus
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
-                    setErrorMsg("");
+                    setLocalError("");
+                    clearError();
                   }}
+                  disabled={isLoading}
                 />
               </motion.div>
 
@@ -133,30 +174,59 @@ const Auth = () => {
                   margin="normal"
                   required
                   fullWidth
+                  name="password"
                   label="Password"
                   type="password"
+                  id="password"
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
-                    setErrorMsg("");
+                    setLocalError("");
+                    clearError();
                   }}
+                  disabled={isLoading}
                 />
               </motion.div>
 
               <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: isLoading ? 1 : 1.05 }}
+                whileTap={{ scale: isLoading ? 1 : 0.95 }}
                 transition={{ type: "spring", stiffness: 300 }}
               >
                 <Button
                   type="submit"
                   fullWidth
                   variant="contained"
-                  sx={{ mt: 3, mb: 2, py: 1.5, fontWeight: "bold" }}
-                  disabled={loading}
+                  sx={{ 
+                    mt: 3, 
+                    mb: 2, 
+                    py: 1.5, 
+                    fontWeight: "bold",
+                    fontSize: "1.1rem"
+                  }}
+                  disabled={isLoading}
                 >
-                  {loading ? <CircularProgress size={24} color="inherit" /> : "Sign In"}
+                  {isLoading ? (
+                    <CircularProgress size={24} color="inherit" />
+                  ) : (
+                    "SignIn"
+                  )}
                 </Button>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.8 }}
+              >
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary" 
+                  sx={{ mt: 2 }}
+                >
+                  MedTech
+                </Typography>
               </motion.div>
             </Box>
           </Paper>
