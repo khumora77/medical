@@ -7,17 +7,19 @@ import Doctors from "./components/admin-pages/doctors";
 import Patients from "./components/admin-pages/patients";
 import Settings from "./components/admin-pages/settings";
 import Auth from "./pages/auth";
-import AdminProfile from "./components/admin-pages/admin-profile";
+import ChangePassword from "./components/admin-pages/change-password";
 
 const App = () => {
+
   return (
     <Routes>
+     
       <Route path="/" element={<Auth />} />
       <Route path="/doctor" element={<Doctor />} />
       <Route path="/reception" element={<Reception />} />
       <Route element={<MiniDrawer />}>
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/admin-profile" element={<AdminProfile />} />
+      <Route path="/admin-profile" element={<ChangePassword/>}/>
         <Route path="/doctors" element={<Doctors />} />
         <Route path="/receptions" element={<Reception />} />
         <Route path="/patients" element={<Patients />} />

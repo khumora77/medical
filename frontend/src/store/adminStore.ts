@@ -1,125 +1,47 @@
+// src/store/adminStore.ts
 import { create } from 'zustand';
-import { adminApi } from '../api/adminApi';
-import type { User } from '../types';
 
-interface AdminState {
-  profile: User | null;
-  stats: {
-    totalUsers: number;
-    activeSessions: number;
-    tasksCompleted: number;
-    storageUsed: string;
-  } | null;
+interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+interface AdminStore {
   isLoading: boolean;
   error: string | null;
 
-  // Actions
-  fetchProfile: () => Promise<void>;
-  updateProfile: (profileData: Partial<User>) => Promise<void>;
-  updateAvatar: (avatarFile: File) => Promise<void>;
-  changePassword: (passwordData: {
-    currentPassword: string;
-    newPassword: string;
-    confirmPassword: string;
-  }) => Promise<void>;
-  fetchStats: () => Promise<void>;
+  changePassword: (payload: ChangePasswordPayload) => Promise<{ message: string }>;
   clearError: () => void;
 }
 
-export const useAdminStore = create<AdminState>((set, get) => ({
-  profile: null,
-  stats: null,
+export const useAdminStore = create<AdminStore>((set) => ({
   isLoading: false,
   error: null,
 
-  fetchProfile: async () => {
+  changePassword: async ({ currentPassword, newPassword, confirmPassword }) => {
     set({ isLoading: true, error: null });
-    try {
-      const profile = await adminApi.getProfile();
-      set({ profile, isLoading: false });
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 
-                          error.message || 
-                          'Profil ma\'lumotlarini yuklashda xatolik';
-      
-      set({ 
-        error: errorMessage, 
-        isLoading: false 
-      });
-      console.error('Profil yuklashda xatolik:', error);
-    }
-  },
 
-  updateProfile: async (profileData: Partial<User>) => {
-    set({ isLoading: true, error: null });
     try {
-      const updatedProfile = await adminApi.updateProfile(profileData);
-      set({ profile: updatedProfile, isLoading: false });
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 
-                          error.message || 
-                          'Profilni yangilashda xatolik';
+      // 💡 Bu yerda API chaqiruvini joylashtiring
+      // Masalan: const response = await axios.post('/api/change-password', { ... });
       
-      set({ 
-        error: errorMessage, 
-        isLoading: false 
+      console.log('Parol o‘zgartirish so‘rovi yuborildi:', {
+        currentPassword,
+        newPassword,
+        confirmPassword,
       });
-      throw error;
-    }
-  },
 
-  updateAvatar: async (avatarFile: File) => {
-    set({ isLoading: true, error: null });
-    try {
-      const { avatarUrl } = await adminApi.updateAvatar(avatarFile);
-      const currentProfile = get().profile;
-      if (currentProfile) {
-        const updatedProfile = { ...currentProfile, avatar: avatarUrl };
-        set({ profile: updatedProfile, isLoading: false });
-      }
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 
-                          error.message || 
-                          'Avatar yangilashda xatolik';
-      
-      set({ 
-        error: errorMessage, 
-        isLoading: false 
-      });
-      throw error;
-    }
-  },
+      // Soxta natija (real API o‘rniga)
+      await new Promise((res) => setTimeout(res, 1500));
 
-  changePassword: async (passwordData) => {
-    set({ isLoading: true, error: null });
-    try {
-      const result = await adminApi.changePassword(passwordData);
       set({ isLoading: false });
-      return result;
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 
-                          error.message || 
-                          'Parol yangilashda xatolik';
-      
-      set({ 
-        error: errorMessage, 
-        isLoading: false 
-      });
-      throw error;
+      return { message: 'Parol muvaffaqiyatli yangilandi' };
+    } catch (err) {
+      set({ isLoading: false, error: 'Parolni yangilashda xatolik yuz berdi' });
+      throw err;
     }
   },
 
-  fetchStats: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const stats = await adminApi.getStats();
-      set({ stats, isLoading: false });
-    } catch (error: any) {
-      console.warn('Statistika yuklashda xatolik:', error);
-      // Stats olishda xatolik bo'lsa ham, loadingni to'xtatish
-      set({ isLoading: false });
-    }
-  },
-
-  clearError: () => set({ error: null })
+  clearError: () => set({ error: null }),
 }));
