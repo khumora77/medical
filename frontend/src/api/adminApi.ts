@@ -1,4 +1,3 @@
-// Parolni yangilash
 changePassword: async (passwordData: {
   currentPassword: string;
   newPassword: string;

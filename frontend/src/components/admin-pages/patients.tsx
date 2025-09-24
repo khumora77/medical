@@ -1,10 +1,10 @@
-import PatientForm from "../patient/patientForm"
+import AddUserPage from "../patient/patientForm"
 
 
 const Patients = () => {
   return (
     <div>
-      <PatientForm/>
+      <AddUserPage/>
     </div>
   )
 }
