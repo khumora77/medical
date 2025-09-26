@@ -26,28 +26,22 @@ export const useAuthStore = create<AuthState>()(
       error: null,
 
       login: async (credentials: LoginData) => {
-        console.log('Login boshlandi:', credentials);
         set({ isLoading: true, error: null });
         
         try {
           const response = await authApi.login(credentials);
-          console.log('Login response:', response);
-          
-          const { user, token } = response;
+          const { user, access_token } = response;
 
           set({
             user,
-            token,
+            token: access_token,
             isAuthenticated: true,
             isLoading: false,
             error: null,
           });
 
-          console.log('Login muvaffaqiyatli. User:', user);
           return user;
         } catch (error: any) {
-          console.error('Login xatosi:', error);
-          
           const errorMessage =
             error.response?.data?.message ||
             error.message ||
@@ -62,21 +56,30 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        console.log('Logout qilindi');
+        console.log('🔄 Logout funksiyasi ishga tushdi');
+        
+        // LocalStorage ni tozalash
+        localStorage.removeItem('auth-storage');
+        
+        // State ni reset qilish
         set({
           user: null,
           token: null,
           isAuthenticated: false,
+          isLoading: false,
           error: null,
         });
+
+        console.log('✅ Logout muvaffaqiyatli. State reset qilindi.');
+        
+ 
+        window.location.href = '/';
       },
 
       checkAuth: async () => {
-        console.log('checkAuth ishga tushdi');
         const { token } = get();
         
         if (!token) {
-          console.log('Token yoq, authenticated false');
           set({ isAuthenticated: false });
           return;
         }
@@ -84,7 +87,6 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true });
         try {
           const user = await authApi.getProfile();
-          console.log('Profile muvaffaqiyatli yuklandi:', user);
           set({
             user,
             isAuthenticated: true,
@@ -97,6 +99,7 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             isAuthenticated: false 
           });
+          // Logout ni chaqiramiz, agar token noto'g'ri bo'lsa
           get().logout();
         }
       },

@@ -28,6 +28,7 @@ import {
   MenuItem,
   Typography,
   Tooltip,
+  Button,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -38,8 +39,9 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import SettingsIcon from "@mui/icons-material/Settings";
 
 import { sidebar } from "../../constants";
-import { Link, Outlet } from "react-router-dom";
-import Image from "../../assets/image.png"
+import { Link, Outlet, useNavigate } from "react-router-dom";
+import Image from "../../assets/image.png";
+import { useAuthStore } from "../../store/auth-store"; // Auth store ni import qilamiz
 
 const drawerWidth = 240;
 
@@ -160,6 +162,10 @@ export default function MiniDrawer() {
   const [notificationsAnchorEl, setNotificationsAnchorEl] =
     React.useState<null | HTMLElement>(null);
 
+  // Auth store va navigate ni qo'shamiz
+  const { logout, user } = useAuthStore();
+  const navigate = useNavigate();
+
   const handleDrawerOpen = () => {
     setOpen(true);
   };
@@ -184,6 +190,13 @@ export default function MiniDrawer() {
 
   const handleNotificationsMenuClose = () => {
     setNotificationsAnchorEl(null);
+  };
+
+  // Logout funksiyasini qo'shamiz
+  const handleLogout = () => {
+    console.log('🔄 Logout bosildi');
+    logout(); // Auth store dagi logout funksiyasini chaqiramiz
+    handleMenuClose(); // Menyuni yopamiz
   };
 
   const menuId = "primary-search-account-menu";
@@ -226,7 +239,12 @@ export default function MiniDrawer() {
 
           <Box sx={{ flexGrow: 1 }} />
 
-          <Box sx={{ display: "flex", alignItems: "center" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            {/* Foydalanuvchi ma'lumotlari */}
+            <Typography variant="body2" sx={{ color: 'white' }}>
+              {user?.email} ({user?.role})
+            </Typography>
+
             <IconButton
               size="large"
               aria-label="show new notifications"
@@ -269,29 +287,35 @@ export default function MiniDrawer() {
             open={Boolean(anchorEl)}
             onClose={handleMenuClose}
           >
-            <Link to={"/admin-profile"}>
-              <MenuItem onClick={handleMenuClose}>
-                <ListItemIcon>
-                  <AccountCircle fontSize="small" />
-                </ListItemIcon>
-                Profile
-              </MenuItem>
-            </Link>
-            <Link to={"/settings"}>
-              <MenuItem onClick={handleMenuClose}>
-                <ListItemIcon>
-                  <SettingsIcon fontSize="small" />
-                </ListItemIcon>
-                Settings
-              </MenuItem>
-            </Link>
-            <MenuItem onClick={handleMenuClose}>
+            <MenuItem 
+              onClick={() => {
+                handleMenuClose();
+                navigate("/admin-profile");
+              }}
+            >
+              <ListItemIcon>
+                <AccountCircle fontSize="small" />
+              </ListItemIcon>
+              Profile
+            </MenuItem>
+            
+            <MenuItem 
+              onClick={() => {
+                handleMenuClose();
+                navigate("/settings");
+              }}
+            >
+              <ListItemIcon>
+                <SettingsIcon fontSize="small" />
+              </ListItemIcon>
+              Settings
+            </MenuItem>
+            
+            <MenuItem onClick={handleLogout}>
               <ListItemIcon>
                 <LogoutIcon fontSize="small" />
               </ListItemIcon>
-              <Link to="/" style={{ textDecoration: "none", color: "inherit" }}>
-                LogOut
-              </Link>
+              LogOut
             </MenuItem>
           </Menu>
 
@@ -389,19 +413,23 @@ export default function MiniDrawer() {
 
         <Box sx={{ mt: "auto", p: 2 }}>
           <Divider sx={{ mb: 2 }} />
-          <Link to="/" style={{ textDecoration: "none" }}>
-            <ListItemButton
-              sx={{
-                borderRadius: 1,
-                color: "error.main",
-              }}
-            >
-              <ListItemIcon sx={{ color: "error.main" }}>
-                <LogoutIcon />
-              </ListItemIcon>
-              <ListItemText primary="LogOut" />
-            </ListItemButton>
-          </Link>
+          {/* Logout tugmasi - endi funksiya bilan ishlaydi */}
+          <ListItemButton
+            onClick={handleLogout}
+            sx={{
+              borderRadius: 1,
+              color: "error.main",
+              '&:hover': {
+                backgroundColor: 'error.light',
+                color: 'white'
+              }
+            }}
+          >
+            <ListItemIcon sx={{ color: "inherit" }}>
+              <LogoutIcon />
+            </ListItemIcon>
+            <ListItemText primary="LogOut" />
+          </ListItemButton>
         </Box>
       </Drawer>
 
